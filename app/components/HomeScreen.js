@@ -11,8 +11,10 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { locationService } from "../services/locationService";
 import notificationService from "../services/notificationService";
 import MapView from "./MapView";
+import { useNavigation } from "@react-navigation/native";
 
-const HomeScreen = ({ navigation }) => {
+const HomeScreen = () => {
+  const navigation = useNavigation();
   const [currentLocation, setCurrentLocation] = useState(null);
   const [nearestStation, setNearestStation] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -141,6 +143,13 @@ const HomeScreen = ({ navigation }) => {
           <MaterialIcons name="refresh" size={24} color="#007AFF" />
           <Text style={styles.refreshButtonText}>Refresh Location</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.testButton}
+          onPress={() => navigation.navigate("NotificationTest")}
+        >
+          <Text style={styles.buttonText}>Test Notifications</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -259,6 +268,18 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: "#fff",
     fontSize: 16,
+  },
+  testButton: {
+    backgroundColor: "#34C759",
+    padding: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
   },
 });
 
