@@ -1,51 +1,103 @@
-# Welcome to your Expo app 👋
+# Japan Tour App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A mobile application that helps tourists find and navigate to the nearest train stations in Japan, with cultural insights and recommendations based on user nationality.
 
-## Get started
+## Features
 
-1. Install dependencies
+- Find the nearest train station based on current location
+- View station details including:
+  - Distance and directions
+  - Opening hours
+  - Rating and reviews
+  - Cultural insights
+- Personalized recommendations based on user type (Korean or Western tourist)
+- Interactive map with current location and station markers
+- Beautiful and intuitive user interface
+
+## Prerequisites
+
+- Node.js (v14 or later)
+- npm or yarn
+- Expo CLI
+- Google Maps API key
+- iOS Simulator (for iOS development)
+- Android Studio and Android SDK (for Android development)
+
+## Installation
+
+1. Clone the repository:
+
+   ```bash
+   git clone https://github.com/yourusername/japan-tour-app.git
+   cd japan-tour-app
+   ```
+
+2. Install dependencies:
 
    ```bash
    npm install
    ```
 
-2. Start the app
+3. Create a `.env` file in the root directory and add your API keys:
 
-   ```bash
-    npx expo start
+   ```
+   GOOGLE_MAPS_API_KEY=your_google_maps_api_key
    ```
 
-In the output, you'll find options to open the app in a
+4. Update the Google Maps API keys in `app.json`:
+   - For iOS: Update the `ios.config.googleMapsApiKey`
+   - For Android: Update the `android.config.googleMaps.apiKey`
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Running the App
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+1. Start the development server:
 
-## Get a fresh project
+   ```bash
+   npx expo start
+   ```
 
-When you're ready, run:
+2. Run on iOS:
 
-```bash
-npm run reset-project
+   ```bash
+   npx expo run:ios
+   ```
+
+3. Run on Android:
+   ```bash
+   npx expo run:android
+   ```
+
+## Project Structure
+
+```
+japan-tour-app/
+├── app/
+│   ├── assets/          # Images, fonts, and other static files
+│   ├── components/      # Reusable React components
+│   ├── hooks/          # Custom React hooks
+│   ├── navigation/     # Navigation configuration
+│   └── services/       # API and other services
+├── .env                # Environment variables
+├── app.json           # Expo configuration
+├── babel.config.js    # Babel configuration
+└── package.json       # Project dependencies
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Contributing
 
-## Learn more
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-To learn more about developing your project with Expo, look at the following resources:
+## License
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Join the community
+## Acknowledgments
 
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
->>>>>>> c969f5e (initial commit)
+- [Expo](https://expo.dev/)
+- [React Native](https://reactnative.dev/)
+- [React Navigation](https://reactnavigation.org/)
+- [Google Maps Platform](https://cloud.google.com/maps-platform/)
