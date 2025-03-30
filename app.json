@@ -16,8 +16,8 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.japantourapp.app",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "This app needs access to location to find the nearest train station.",
-        "NSLocationAlwaysUsageDescription": "This app needs access to location to find the nearest train station.",
+        "NSLocationWhenInUseUsageDescription": "This app needs access to location to find the nearest train stations.",
+        "NSLocationAlwaysUsageDescription": "This app needs access to location to find the nearest train stations.",
         "UIBackgroundModes": ["location", "remote-notification"]
       },
       "buildNumber": "1"
@@ -42,14 +42,14 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Japan Tour App to use your location to find the nearest train station."
+          "locationAlwaysAndWhenInUsePermission": "Allow Japan Tour App to use your location to find the nearest train stations."
         }
       ],
       [
         "expo-notifications",
         {
           "icon": "./app/assets/notification-icon.png",
-          "color": "#007AFF",
+          "color": "#ffffff",
           "sounds": ["./app/assets/notification-sound.wav"]
         }
       ]
@@ -57,11 +57,7 @@
     "extra": {
       "eas": {
         "projectId": "bed11179-3537-48bb-8d37-871c5952e357"
-      },
-      "supabaseUrl": "https://pazseexefvhvcxpdgrbb.supabase.co",
-      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBhenNlZXhlZnZodmN4cGRncmJiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI2OTE0ODIsImV4cCI6MjA1ODI2NzQ4Mn0.Mvr1MHvivpXlO20jXd7p7mWmKI0Ntx4YWrkFhXk7FIw",
-      "deepseekApiKey": "sk-19fc0983555c4b5e958448ac94d5f9d6",
-      "googleMapsApiKey": "AIzaSyAqH8Zlq6FiVcRTzzAJn6_K60eO3ROIRsI"
+      }
     },
     "owner": "chanlee12",
     "runtimeVersion": {
