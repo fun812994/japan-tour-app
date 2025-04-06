@@ -6,18 +6,28 @@ import {
   StyleSheet,
   Alert,
   Platform,
+  Modal,
 } from "react-native";
 import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import * as Location from "expo-location";
+import { MaterialIcons } from "@expo/vector-icons";
+import { locationService } from "../services/locationService";
+import stationService from "../services/stationService";
+import notificationService from "../services/notificationService";
+import { useNavigation } from "@react-navigation/native";
 
 const NotificationTest = () => {
+  const navigation = useNavigation();
   const [notification, setNotification] = useState(false);
   const [permission, setPermission] = useState(null);
   const [isMonitoring, setIsMonitoring] = useState(false);
   const [lastNotificationTime, setLastNotificationTime] = useState(null);
-  const NOTIFICATION_COOLDOWN = 60 * 60 * 1000; // 1 hour cooldown
-  const PROXIMITY_THRESHOLD = 5000; // Increased to 5km for testing
+  const [selectedStation, setSelectedStation] = useState(null);
+  const [stationCulture, setStationCulture] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const NOTIFICATION_COOLDOWN = 5 * 1000;
+  const PROXIMITY_THRESHOLD = 500;
 
   useEffect(() => {
     setupNotifications();
@@ -38,32 +48,35 @@ const NotificationTest = () => {
     return () => subscription.remove();
   }, []);
 
+  useEffect(() => {
+    setupNotifications();
+
+    const subscription = Notifications.addNotificationResponseReceivedListener(
+      async (response) => {
+        const result = await notificationService.handleNotificationResponse(
+          response
+        );
+        if (result?.shouldNavigate) {
+          navigation.navigate("StationDetails", {
+            stationId: result.station.id,
+          });
+        }
+      }
+    );
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   async function setupNotifications() {
     try {
-      if (Platform.OS === "android") {
-        await Notifications.setNotificationChannelAsync("default", {
-          name: "default",
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: "#FF231F7C",
-        });
+      const hasPermission = await notificationService.setupNotifications();
+      if (hasPermission) {
+        setPermission("granted");
+      } else {
+        setPermission("denied");
       }
-
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync();
-      let finalStatus = existingStatus;
-
-      if (existingStatus !== "granted") {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-
-      if (finalStatus !== "granted") {
-        Alert.alert("Failed to get permission for notifications!");
-        return;
-      }
-
-      setPermission(finalStatus);
     } catch (error) {
       console.error("Error setting up notifications:", error);
       Alert.alert("Error", "Failed to set up notifications. Please try again.");
@@ -75,13 +88,27 @@ const NotificationTest = () => {
     setIsMonitoring(true);
 
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== "granted") {
-        console.error("Location permission not granted");
+      // First check if location services are enabled
+      const enabled = await Location.hasServicesEnabledAsync();
+      if (!enabled) {
+        Alert.alert(
+          "Location Services Disabled",
+          "Please enable location services in your device settings to use this feature."
+        );
         return;
       }
 
-      // Start watching position
+      // Request foreground permissions only
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Location Permission Required",
+          "Please allow location access to find nearby train stations."
+        );
+        return;
+      }
+
+      // Start watching position with foreground updates only
       Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Balanced,
@@ -90,8 +117,15 @@ const NotificationTest = () => {
         },
         handleLocationUpdate
       );
+
+      // Send a test notification immediately
+      await sendTestNotification();
     } catch (error) {
       console.error("Error starting location monitoring:", error);
+      Alert.alert(
+        "Error",
+        "Failed to start location monitoring. Please try again."
+      );
     }
   }
 
@@ -102,52 +136,37 @@ const NotificationTest = () => {
   async function handleLocationUpdate(location) {
     try {
       const nearestStation = await locationService.findNearestTrainStation(
-        location.coords.latitude,
-        location.coords.longitude
+        location
       );
+      console.log("Nearest station found:", nearestStation);
 
-      // Transform the Places API response into our expected format
-      const station = nearestStation
-        ? {
-            id: nearestStation.id,
-            name: nearestStation.displayName.text,
-            latitude: nearestStation.location.latitude,
-            longitude: nearestStation.location.longitude,
-            address: nearestStation.formattedAddress,
-            rating: nearestStation.rating,
+      if (nearestStation) {
+        // Get station info from Supabase
+        const stationInfo = await stationService.getStationInfo(
+          nearestStation.id
+        );
+        if (stationInfo) {
+          // Get cultural information for the station
+          const cultureInfo = await stationService.getStationCulture(
+            nearestStation.id
+          );
+          setStationCulture(cultureInfo);
+
+          // Calculate distance to station
+          const distance = calculateDistance(
+            location.coords.latitude,
+            location.coords.longitude,
+            stationInfo.latitude,
+            stationInfo.longitude
+          );
+
+          if (distance <= PROXIMITY_THRESHOLD) {
+            await checkAndSendNotification(stationInfo, cultureInfo);
           }
-        : {
-            id: "test-station",
-            name: "Test Station",
-            latitude: location.coords.latitude + 0.001,
-            longitude: location.coords.longitude + 0.001,
-          };
-
-      // Calculate distance to station
-      const distance = calculateDistance(
-        location.coords.latitude,
-        location.coords.longitude,
-        station.latitude,
-        station.longitude
-      );
-
-      console.log("Distance to station:", distance, "meters");
-      console.log("Station details:", station);
-
-      // Check if we're within proximity threshold
-      if (distance <= PROXIMITY_THRESHOLD) {
-        await checkAndSendNotification(station);
+        }
       }
     } catch (error) {
       console.error("Error handling location update:", error);
-      // For testing, create a dummy station even if there's an error
-      const dummyStation = {
-        id: "test-station",
-        name: "Test Station",
-        latitude: location.coords.latitude + 0.001,
-        longitude: location.coords.longitude + 0.001,
-      };
-      await checkAndSendNotification(dummyStation);
     }
   }
 
@@ -166,7 +185,40 @@ const NotificationTest = () => {
     return R * c; // Distance in meters
   }
 
-  async function checkAndSendNotification(station) {
+  async function sendTestNotification() {
+    try {
+      // Configure notification behavior for iOS
+      if (Platform.OS === "ios") {
+        Notifications.setNotificationHandler({
+          handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+          }),
+        });
+      }
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "🔔 Test Notification",
+          body: "This is a test notification to verify notifications are working.",
+          sound: true,
+          priority:
+            Platform.OS === "ios"
+              ? "max"
+              : Notifications.AndroidNotificationPriority.HIGH,
+          vibrate: [0, 250, 250, 250],
+          badge: 1,
+          categoryIdentifier: "test-notification",
+        },
+        trigger: { seconds: 1 },
+      });
+    } catch (error) {
+      console.error("Error sending test notification:", error);
+    }
+  }
+
+  async function checkAndSendNotification(station, cultureInfo) {
     const now = Date.now();
     if (
       lastNotificationTime &&
@@ -176,30 +228,31 @@ const NotificationTest = () => {
     }
 
     try {
-      // Dummy cultural information until DeepSeek is set up
-      const dummyCulturalInfo = {
-        summary: `Welcome to ${station.name}! This area is rich in Japanese culture. Visit the nearby temples, try local street food, and explore the traditional shopping streets. Don't forget to check out the seasonal festivals and events happening around the station.`,
-        recommendations: [
-          "Visit local temples and shrines",
-          "Try traditional street food",
-          "Explore shopping streets",
-          "Check seasonal events",
-        ],
-      };
+      if (Platform.OS === "ios") {
+        Notifications.setNotificationHandler({
+          handleNotification: async () => ({
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+          }),
+        });
+      }
 
-      // Schedule notification
       await Notifications.scheduleNotificationAsync({
         content: {
-          title: `Near ${station.name}`,
-          body: dummyCulturalInfo.summary,
+          title: `🚂 You're near ${station.name}!`,
+          body:
+            cultureInfo?.short_description ||
+            "Discover the history and culture of this station",
           sound: true,
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          vibrate: [0, 250, 250, 250],
+          data: {
+            stationId: station.id,
+            action: "show_details",
+          },
         },
-        trigger: { seconds: 60 }, // Send after 1 minute
-        data: {
-          stationId: station.id,
-          latitude: station.latitude,
-          longitude: station.longitude,
-        },
+        trigger: { seconds: 1 },
       });
 
       setLastNotificationTime(now);
@@ -208,63 +261,88 @@ const NotificationTest = () => {
     }
   }
 
-  async function simulateNearStation() {
-    try {
-      const { coords } = await Location.getCurrentPositionAsync({});
-      const dummyStation = {
-        id: "test-station",
-        name: "Test Station",
-        latitude: coords.latitude + 0.001,
-        longitude: coords.longitude + 0.001,
-        address: "Test Address",
-        rating: 4.5,
-      };
-      await checkAndSendNotification(dummyStation);
-    } catch (error) {
-      console.error("Error simulating near station:", error);
-    }
-  }
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Station Proximity Notifications</Text>
-
-      <View style={styles.infoContainer}>
-        <Text style={styles.label}>Permission Status:</Text>
-        <Text style={styles.value}>{permission || "Not checked"}</Text>
-        <Text style={styles.label}>Monitoring Status:</Text>
-        <Text style={styles.value}>{isMonitoring ? "Active" : "Inactive"}</Text>
-        <Text style={styles.label}>Proximity Threshold:</Text>
-        <Text style={styles.value}>{PROXIMITY_THRESHOLD / 1000} km</Text>
+      <View style={styles.header}>
+        <MaterialIcons name="notifications" size={24} color="#007AFF" />
+        <Text style={styles.title}>Notification Test</Text>
       </View>
 
-      <TouchableOpacity
-        style={[styles.button, isMonitoring && styles.buttonActive]}
-        onPress={isMonitoring ? stopMonitoring : startMonitoring}
-      >
-        <Text style={styles.buttonText}>
-          {isMonitoring ? "Stop Monitoring" : "Start Monitoring"}
+      <View style={styles.content}>
+        <Text style={styles.status}>
+          Notification Permission: {permission || "unknown"}
         </Text>
-      </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.button, styles.testButton]}
-        onPress={simulateNearStation}
+        <TouchableOpacity
+          style={[
+            styles.button,
+            isMonitoring ? styles.buttonActive : styles.buttonInactive,
+          ]}
+          onPress={isMonitoring ? stopMonitoring : startMonitoring}
+        >
+          <MaterialIcons
+            name={isMonitoring ? "location-on" : "location-off"}
+            size={24}
+            color="#fff"
+          />
+          <Text style={styles.buttonText}>
+            {isMonitoring ? "Stop Monitoring" : "Start Monitoring"}
+          </Text>
+        </TouchableOpacity>
+
+        {selectedStation && (
+          <View style={styles.stationInfo}>
+            <Text style={styles.stationName}>{selectedStation.name}</Text>
+            <Text style={styles.stationAddress}>{selectedStation.address}</Text>
+          </View>
+        )}
+      </View>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
       >
-        <Text style={styles.buttonText}>Simulate Near Station</Text>
-      </TouchableOpacity>
-
-      {notification && (
-        <View style={styles.notificationContainer}>
-          <Text style={styles.notificationTitle}>Last Notification:</Text>
-          <Text style={styles.notificationText}>
-            {notification.request.content.title}
-          </Text>
-          <Text style={styles.notificationText}>
-            {notification.request.content.body}
-          </Text>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Station Information</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setModalVisible(false)}
+              >
+                <MaterialIcons name="close" size={24} color="#333" />
+              </TouchableOpacity>
+            </View>
+            {stationCulture && (
+              <>
+                <Text style={styles.modalText}>
+                  {stationCulture.short_description}
+                </Text>
+                <TouchableOpacity
+                  style={styles.detailsButton}
+                  onPress={() => {
+                    setModalVisible(false);
+                    navigation.navigate("StationDetails", {
+                      stationId: selectedStation.id,
+                    });
+                  }}
+                >
+                  <Text style={styles.detailsButtonText}>
+                    View Full Details
+                  </Text>
+                  <MaterialIcons
+                    name="arrow-forward"
+                    size={24}
+                    color="#007AFF"
+                  />
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
         </View>
-      )}
+      </Modal>
     </View>
   );
 };
@@ -272,66 +350,110 @@ const NotificationTest = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
     backgroundColor: "#fff",
+    padding: 20,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 20,
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 20,
-    color: "#007AFF",
-  },
-  infoContainer: {
-    backgroundColor: "#f5f5f5",
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 5,
+    marginLeft: 10,
     color: "#333",
   },
-  value: {
-    fontSize: 14,
+  content: {
+    flex: 1,
+  },
+  status: {
+    fontSize: 16,
+    marginBottom: 20,
     color: "#666",
-    marginBottom: 15,
   },
   button: {
-    backgroundColor: "#007AFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     padding: 15,
     borderRadius: 10,
-    alignItems: "center",
+    marginBottom: 20,
   },
   buttonActive: {
-    backgroundColor: "#FF3B30",
+    backgroundColor: "#dc3545",
+  },
+  buttonInactive: {
+    backgroundColor: "#28a745",
   },
   buttonText: {
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "600",
+    marginLeft: 10,
   },
-  notificationContainer: {
-    marginTop: 20,
+  stationInfo: {
+    backgroundColor: "#f8f9fa",
     padding: 15,
-    backgroundColor: "#e3f2fd",
+    borderRadius: 10,
+    marginTop: 20,
+  },
+  stationName: {
+    fontSize: 18,
+    fontWeight: "600",
+    marginBottom: 5,
+    color: "#333",
+  },
+  stationAddress: {
+    fontSize: 14,
+    color: "#666",
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    padding: 20,
+    width: "90%",
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  closeButton: {
+    padding: 5,
+  },
+  modalText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: "#444",
+    marginBottom: 15,
+  },
+  detailsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f8f9fa",
+    padding: 15,
     borderRadius: 10,
   },
-  notificationTitle: {
+  detailsButtonText: {
     fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 10,
+    fontWeight: "600",
     color: "#007AFF",
-  },
-  notificationText: {
-    fontSize: 14,
-    color: "#333",
-    marginBottom: 5,
-  },
-  testButton: {
-    backgroundColor: "#34C759",
-    marginTop: 10,
+    marginRight: 10,
   },
 });
 

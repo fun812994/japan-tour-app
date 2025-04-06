@@ -8,15 +8,19 @@
       "distribution": "internal",
       "ios": {
         "resourceClass": "m-medium"
-      },
-      "android": {
-        "gradleCommand": ":app:assembleDebug"
       }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium"
+      }
     },
-    "production": {}
+    "production": {
+      "ios": {
+        "resourceClass": "m-medium"
+      }
+    }
   },
   "submit": {
     "production": {}

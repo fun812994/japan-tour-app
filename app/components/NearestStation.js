@@ -8,7 +8,7 @@ import {
 } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { locationService } from "../services/locationService";
-import MapView from "./MapView";
+import CustomMapView from "./MapView";
 
 const NearestStation = () => {
   const [currentLocation, setCurrentLocation] = useState(null);
@@ -74,7 +74,7 @@ const NearestStation = () => {
 
   return (
     <View style={styles.container}>
-      <MapView
+      <CustomMapView
         style={styles.map}
         currentLocation={currentLocation}
         destination={nearestStation}

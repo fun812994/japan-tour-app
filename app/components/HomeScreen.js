@@ -10,7 +10,7 @@ import {
 import { MaterialIcons } from "@expo/vector-icons";
 import { locationService } from "../services/locationService";
 import notificationService from "../services/notificationService";
-import MapView from "./MapView";
+import CustomMapView from "./MapView";
 import { useNavigation } from "@react-navigation/native";
 
 const HomeScreen = () => {
@@ -27,7 +27,7 @@ const HomeScreen = () => {
 
   const setupNotifications = async () => {
     try {
-      await notificationService.registerForPushNotifications();
+      await notificationService.setupNotifications();
       await notificationService.scheduleWelcomeNotification();
     } catch (error) {
       console.error("Error setting up notifications:", error);
@@ -48,7 +48,6 @@ const HomeScreen = () => {
       }
       setNearestStation(station);
 
-      // Send notification about the nearest station
       await notificationService.scheduleStationNotification(station);
     } catch (err) {
       setError(err.message);
@@ -70,26 +69,14 @@ const HomeScreen = () => {
   if (error) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Error: {error}</Text>
+        <MaterialIcons name="error" size={48} color="#dc3545" />
+        <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity
           style={styles.retryButton}
           onPress={findNearestStation}
         >
+          <MaterialIcons name="refresh" size={24} color="#fff" />
           <Text style={styles.retryButtonText}>Retry</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  if (!nearestStation) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>No station found nearby</Text>
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={findNearestStation}
-        >
-          <Text style={styles.retryButtonText}>Try Again</Text>
         </TouchableOpacity>
       </View>
     );
@@ -98,7 +85,7 @@ const HomeScreen = () => {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.mapContainer}>
-        <MapView
+        <CustomMapView
           style={styles.map}
           currentLocation={currentLocation}
           destination={nearestStation}
@@ -110,15 +97,15 @@ const HomeScreen = () => {
           <View style={styles.stationHeader}>
             <MaterialIcons name="train" size={24} color="#007AFF" />
             <Text style={styles.stationName}>
-              {nearestStation.displayName?.text || "Unknown Station"}
+              {nearestStation?.name || "Unknown Station"}
             </Text>
           </View>
 
           <Text style={styles.stationAddress}>
-            {nearestStation.formattedAddress || "Address not available"}
+            {nearestStation?.address || "Address not available"}
           </Text>
 
-          {nearestStation.rating && (
+          {nearestStation?.rating && (
             <View style={styles.ratingContainer}>
               <MaterialIcons name="star" size={16} color="#FFD700" />
               <Text style={styles.ratingText}>{nearestStation.rating}</Text>
@@ -128,7 +115,9 @@ const HomeScreen = () => {
           <TouchableOpacity
             style={styles.detailsButton}
             onPress={() =>
-              navigation.navigate("StationDetails", { station: nearestStation })
+              navigation.navigate("StationDetails", {
+                stationId: nearestStation.id,
+              })
             }
           >
             <Text style={styles.detailsButtonText}>View Details</Text>
@@ -146,8 +135,9 @@ const HomeScreen = () => {
 
         <TouchableOpacity
           style={styles.testButton}
-          onPress={() => navigation.navigate("NotificationTest")}
+          onPress={() => navigation.navigate("Notifications")}
         >
+          <MaterialIcons name="notifications" size={24} color="#fff" />
           <Text style={styles.buttonText}>Test Notifications</Text>
         </TouchableOpacity>
       </View>
@@ -163,6 +153,7 @@ const styles = StyleSheet.create({
   mapContainer: {
     height: 300,
     width: "100%",
+    marginBottom: 20,
   },
   map: {
     flex: 1,
@@ -172,8 +163,8 @@ const styles = StyleSheet.create({
   },
   stationCard: {
     backgroundColor: "#fff",
-    padding: 20,
     borderRadius: 15,
+    padding: 20,
     marginBottom: 20,
     elevation: 5,
     shadowColor: "#000",
@@ -187,10 +178,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   stationName: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: "bold",
-    color: "#333",
     marginLeft: 10,
+    color: "#333",
   },
   stationAddress: {
     fontSize: 16,
@@ -211,10 +202,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#f8f9fa",
     padding: 15,
     borderRadius: 10,
-    marginTop: 10,
   },
   detailsButtonText: {
     fontSize: 16,
@@ -228,14 +218,27 @@ const styles = StyleSheet.create({
     backgroundColor: "#fff",
     padding: 15,
     borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#007AFF",
+    marginBottom: 10,
   },
   refreshButtonText: {
     fontSize: 16,
     fontWeight: "600",
     color: "#007AFF",
-    marginLeft: 8,
+    marginLeft: 10,
+  },
+  testButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#007AFF",
+    padding: 15,
+    borderRadius: 10,
+  },
+  buttonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#fff",
+    marginLeft: 10,
   },
   loadingContainer: {
     flex: 1,
@@ -255,31 +258,23 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   errorText: {
-    color: "red",
     fontSize: 16,
+    color: "#dc3545",
     textAlign: "center",
-    marginBottom: 20,
+    marginVertical: 20,
   },
   retryButton: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: "#007AFF",
-    padding: 10,
-    borderRadius: 5,
-  },
-  retryButtonText: {
-    color: "#fff",
-    fontSize: 16,
-  },
-  testButton: {
-    backgroundColor: "#34C759",
     padding: 15,
     borderRadius: 10,
-    alignItems: "center",
-    marginTop: 20,
   },
-  buttonText: {
+  retryButtonText: {
     fontSize: 16,
     fontWeight: "600",
     color: "#fff",
+    marginLeft: 10,
   },
 });
 

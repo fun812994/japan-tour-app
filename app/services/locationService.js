@@ -1,5 +1,6 @@
 import * as Location from "expo-location";
 import Constants from "expo-constants";
+import { GOOGLE_MAPS_API_KEY } from "@env";
 
 const locationService = {
   async getCurrentLocation() {
@@ -25,31 +26,18 @@ const locationService = {
 
   async findNearestTrainStation(location) {
     try {
-      const apiKey = Constants.expoConfig.extra.googleMapsApiKey;
-      console.log("Google Maps API Key:", apiKey ? "Present" : "Missing");
-      console.log("API Key length:", apiKey?.length);
-      console.log("API Key first 10 chars:", apiKey?.substring(0, 10));
-      console.log("Testing Places API access...");
-
-      // Extract coordinates from the location object
-      const { latitude, longitude } = location.coords;
-      console.log("Searching for train stations near:", {
-        latitude,
-        longitude,
-      });
-
-      // Test Places API access first with the new endpoint format
-      const testUrl = `https://places.googleapis.com/v1/places:searchNearby?key=${apiKey}`;
-      console.log("Test URL:", testUrl);
-
+      console.log(
+        "Test URL:",
+        `https://places.googleapis.com/v1/places:searchNearby?key=${GOOGLE_MAPS_API_KEY}`
+      );
       const requestBody = {
         locationRestriction: {
           circle: {
             center: {
-              latitude: latitude,
-              longitude: longitude,
+              latitude: location.coords.latitude,
+              longitude: location.coords.longitude,
             },
-            radius: 500.0,
+            radius: 500,
           },
         },
         includedTypes: ["transit_station"],
@@ -58,78 +46,43 @@ const locationService = {
 
       console.log("Request body:", JSON.stringify(requestBody, null, 2));
 
-      const testResponse = await fetch(testUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Goog-FieldMask":
-            "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.types,places.nationalPhoneNumber,places.websiteUri,places.regularOpeningHours",
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      const testData = await testResponse.json();
-      console.log(
-        "Places API test response:",
-        JSON.stringify(testData, null, 2)
-      );
-
-      if (testData.error) {
-        console.error("API Error Details:", testData.error);
-        throw new Error(
-          `Places API access denied: ${testData.error.message}. Please check your API key and enable the Places API in Google Cloud Console.`
-        );
-      }
-
-      if (testData.places && testData.places.length > 0) {
-        const nearestStation = testData.places[0];
-        console.log("Nearest station found:", nearestStation.displayName);
-        return nearestStation;
-      }
-
-      // If no results found within 500m, try a larger radius
-      const largerRequestBody = {
-        ...requestBody,
-        locationRestriction: {
-          circle: {
-            center: {
-              latitude: latitude,
-              longitude: longitude,
-            },
-            radius: 1000.0,
+      const response = await fetch(
+        `https://places.googleapis.com/v1/places:searchNearby?key=${GOOGLE_MAPS_API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
+            "X-Goog-FieldMask":
+              "places.id,places.displayName,places.formattedAddress,places.location,places.types",
           },
-        },
-      };
-
-      console.log("Trying larger search radius...");
-      const largerResponse = await fetch(testUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Goog-FieldMask":
-            "places.id,places.displayName,places.formattedAddress,places.location,places.rating,places.types,places.nationalPhoneNumber,places.websiteUri,places.regularOpeningHours",
-        },
-        body: JSON.stringify(largerRequestBody),
-      });
-
-      const largerData = await largerResponse.json();
-      console.log(
-        "Larger radius search response:",
-        JSON.stringify(largerData, null, 2)
+          body: JSON.stringify(requestBody),
+        }
       );
 
-      if (largerData.places && largerData.places.length > 0) {
-        const nearestStation = largerData.places[0];
-        console.log(
-          "Nearest station found (larger radius):",
-          nearestStation.displayName
-        );
-        return nearestStation;
-      }
-
-      throw new Error("No train stations found nearby");
+      const data = await response.json();
+      console.log("Places API test response:", data);
+      return data;
     } catch (error) {
-      console.error("Error finding train station:", error);
+      console.error("Error finding nearest train station:", error);
+      throw error;
+    }
+  },
+
+  async getStationInfo(stationId) {
+    try {
+      const response = await fetch(
+        `https://places.googleapis.com/v1/places/${stationId}?key=${GOOGLE_MAPS_API_KEY}`,
+        {
+          headers: {
+            "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
+            "X-Goog-FieldMask": "*",
+          },
+        }
+      );
+      return await response.json();
+    } catch (error) {
+      console.error("Error getting station info:", error);
       throw error;
     }
   },

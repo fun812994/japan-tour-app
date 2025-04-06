@@ -4,45 +4,70 @@
     "slug": "japan-tour-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./app/assets/icon.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
-      "image": "./app/assets/splash.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.japantourapp.app",
+      "bundleIdentifier": "com.yourcompany.japantourapp",
+      "config": {
+        "googleMapsApiKey": "@GOOGLE_MAPS_API_KEY"
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "This app needs access to location to find the nearest train stations.",
-        "NSLocationAlwaysUsageDescription": "This app needs access to location to find the nearest train stations.",
-        "UIBackgroundModes": ["location", "remote-notification"]
+        "NSLocationAlwaysUsageDescription": "This app needs access to location to find the nearest train stations even when the app is in the background.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to location to find the nearest train stations even when the app is in the background.",
+        "NSLocationTemporaryUsageDescriptionDictionary": {
+          "LocationWhenInUse": "This app needs access to location to find the nearest train stations.",
+          "LocationAlways": "This app needs access to location to find the nearest train stations even when the app is in the background."
+        },
+        "UIBackgroundModes": [
+          "location",
+          "remote-notification",
+          "fetch",
+          "processing"
+        ],
+        "BGTaskSchedulerPermittedIdentifiers": [
+          "com.japantourapp.app.location-update"
+        ]
       },
       "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./app/assets/adaptive-icon.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.japantourapp.app",
+      "package": "com.yourcompany.japantourapp",
+      "config": {
+        "googleMaps": {
+          "apiKey": "@GOOGLE_MAPS_API_KEY"
+        }
+      },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
-        "NOTIFICATIONS"
+        "NOTIFICATIONS",
+        "RECEIVE_BOOT_COMPLETED",
+        "WAKE_LOCK",
+        "FOREGROUND_SERVICE",
+        "BACKGROUND_FETCH"
       ],
       "versionCode": 1
     },
     "web": {
-      "favicon": "./app/assets/favicon.png"
+      "favicon": "./assets/favicon.png"
     },
     "plugins": [
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow Japan Tour App to use your location to find the nearest train stations."
+          "locationAlwaysAndWhenInUsePermission": "Allow $(PRODUCT_NAME) to use your location."
         }
       ],
       [
@@ -55,16 +80,20 @@
       ]
     ],
     "extra": {
+      "env": "dev",
       "eas": {
-        "projectId": "bed11179-3537-48bb-8d37-871c5952e357"
-      }
+        "projectId": "5f705e0d-07a7-4ae5-b64f-334d3902bbe6"
+      },
+      "SUPABASE_URL": "https://pazseexefvhvcxpdgrbb.supabase.co",
+      "SUPABASE_ANON_KEY": "@SUPABASE_ANON_KEY",
+      "GOOGLE_MAPS_API_KEY": "@GOOGLE_MAPS_API_KEY"
     },
     "owner": "chanlee12",
     "runtimeVersion": {
       "policy": "sdkVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/bed11179-3537-48bb-8d37-871c5952e357"
+      "url": "https://u.expo.dev/5f705e0d-07a7-4ae5-b64f-334d3902bbe6"
     },
     "newArchEnabled": true
   }

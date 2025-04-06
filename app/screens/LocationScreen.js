@@ -1,14 +1,14 @@
 import React from "react";
 import { View, StyleSheet } from "react-native";
 import LocationDetails from "../components/LocationDetails";
-import MapView from "../components/MapView";
+import CustomMapView from "../components/MapView";
 
 const LocationScreen = ({ route }) => {
   const { location } = route.params;
 
   return (
     <View style={styles.container}>
-      <MapView location={location} style={styles.map} />
+      <CustomMapView location={location} style={styles.map} />
       <LocationDetails location={location} style={styles.details} />
     </View>
   );
